@@ -1,0 +1,279 @@
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+//Standort
+model Location {
+    id       Int       @id @default(autoincrement())
+    name     String    @unique
+    rooms    Room[]
+    teachers User[]
+    Faculty  Faculty[]
+}
+
+//Raum
+model Room {
+    id           Int      @id @default(autoincrement())
+    abbreviation String   @unique
+    name         String
+    seats        Int
+    description  String?
+    Location     Location @relation(fields: [locationId], references: [id])
+    locationId   Int
+    Exam         Exam[]
+    Event        Event[]
+}
+
+//Fachbereich
+model Faculty {
+    id           Int         @id @default(autoincrement())
+    name         String      @unique
+    abbreviation String      @unique
+    location     Location[]
+    programms    Programme[]
+}
+
+//Studiengang
+model Programme {
+    id              Int               @id @default(autoincrement())
+    name            String
+    abbreviation    String            @unique
+    degree          Degree            @relation(fields: [degreeId], references: [id])
+    studytype       Studytype         @relation(fields: [studytypeId], references: [id])
+    Faculty         Faculty           @relation(fields: [facultyId], references: [id])
+    facultyId       Int
+    degreeId        Int
+    studytypeId     Int
+    exam_regulation Exam_regulation[]
+    Student         Student[]
+}
+
+//Abschluss
+model Degree {
+    id        Int         @id @default(autoincrement())
+    name      String      @unique
+    Programme Programme[]
+    Student   Student[]
+}
+
+//Studienmodell
+model Studytype {
+    id        Int         @id @default(autoincrement())
+    name      String      @unique
+    Programme Programme[]
+}
+
+//Fachpprüfungsordnung
+model Exam_regulation {
+    id                Int                 @id @default(autoincrement())
+    abbreviation      String              @unique
+    publishing_date   String
+    Programme         Programme           @relation(fields: [programmeId], references: [id])
+    programmeId       Int
+    module            Module[]
+    Moduleinformation Moduleinformation[]
+}
+
+//Modul
+model Module {
+    id                Int                 @id @default(autoincrement())
+    name              String
+    abbreviation      String              @unique
+    min_points        Int
+    points            Int
+    person_in_charge  User?               @relation(fields: [userId], references: [id])
+    intended_semester Int
+    eventinformation  Eventinformation[]
+    userId            Int?
+    Event             Event[]
+    Semestertype      Semestertype[]
+    Exam              Exam[]
+    Exam_regulation   Exam_regulation[]
+    Moduleinformation Moduleinformation[]
+}
+
+//Modulinformation
+model Moduleinformation {
+    id                Int             @id @default(autoincrement())
+    exam_regulation   Exam_regulation @relation(fields: [exam_regulationId], references: [id])
+    module            Module          @relation(fields: [moduleId], references: [id])
+    moduletype        Moduletype      @relation(fields: [moduletypeId], references: [id])
+    exam_regulationId Int
+    moduleId          Int
+    moduletypeId      Int
+
+    @@unique([exam_regulationId, moduleId, moduletypeId])
+}
+
+//Modulart
+model Moduletype {
+    id                Int                 @id @default(autoincrement())
+    name              String
+    abbreviation      String              @unique
+    Moduleinformation Moduleinformation[]
+}
+
+//Frequenz
+model Frequency {
+    id               Int                @id @default(autoincrement())
+    abbreviation     String             @unique
+    description      String
+    eventinformation Eventinformation[]
+}
+
+//Veranstaltungsart
+model Eventtype {
+    id               Int                @id @default(autoincrement())
+    name             String
+    abbreviation     String             @unique
+    Event            Event[]
+    eventinformation Eventinformation[]
+}
+
+//Modulinformationen
+model Eventinformation {
+    id           Int       @id @default(autoincrement())
+    abbreviation String    @unique
+    frequency    Frequency @relation(fields: [frequencyId], references: [id])
+    eventtype    Eventtype @relation(fields: [eventtypeId], references: [id])
+    duration     Int
+    frequencyId  Int
+    eventtypeId  Int
+    Module       Module[]
+}
+
+model Grouptable {
+    id        Int       @id @default(autoincrement())
+    groupname String    @unique
+    event     Event[]
+    Student   Student[]
+}
+
+//Veranstaltung
+model Event {
+    id           Int            @id @default(autoincrement())
+    module       Module         @relation(fields: [moduleId], references: [id])
+    semester     Semester       @relation(fields: [semesterId], references: [id])
+    date         DateTime       @db.Date()
+    starttime    DateTime       @db.Time()
+    endtime      DateTime       @db.Time()
+    room         Room           @relation(fields: [roomId], references: [id])
+    teacher      User[]
+    max_size     Int
+    lastUpdate   DateTime       @updatedAt
+    moduleId     Int
+    eventtypeId  Int
+    Notification Notification[]
+    roomId       Int
+    semesterId   Int
+    Eventtype    Eventtype      @relation(fields: [eventtypeId], references: [id])
+    Grouptable   Grouptable?    @relation(fields: [grouptableId], references: [id])
+    grouptableId Int?
+
+    @@unique([moduleId, eventtypeId, semesterId, date, starttime, endtime])
+}
+
+//Benutzer
+model User {
+    id                Int        @id @default(autoincrement())
+    username          String     @unique
+    hashedPassword    String
+    first_name        String
+    surname           String
+    last_login        DateTime
+    role              Role[]
+    inChargeForModule Module[]
+    Student           Student[]
+    Exam              Exam[]
+    Location          Location[]
+    Event             Event[]
+}
+
+//Rolle
+model Role {
+    id   Int    @id @default(autoincrement())
+    name String @unique
+    User User[]
+}
+
+//Studenten
+model Student {
+    id                 Int          @id @default(autoincrement())
+    userid             User         @relation(fields: [userId], references: [id])
+    register_number    Int          @unique
+    semester           Int
+    intended_degree    Degree[]
+    intended_programme Programme[]
+    isEnrolled         Boolean
+    userId             Int          @unique
+    grouptable         Grouptable[]
+}
+
+//Semester
+model Semester {
+    id               Int          @id @default(autoincrement())
+    abbreviation     String       @unique
+    name             String
+    semestertype     Semestertype @relation(fields: [semestertypeId], references: [id])
+    startdate        DateTime     @db.Date()
+    startlecturedate DateTime     @db.Date()
+    endlecturedate   DateTime     @db.Date()
+    enddate          DateTime     @db.Date()
+    semestertypeId   Int
+    Event            Event[]
+}
+
+//Semestertype
+model Semestertype {
+    id       Int        @id @default(autoincrement())
+    name     String     @unique
+    Semester Semester[]
+    Module   Module[]
+}
+
+//Prüfung
+model Exam {
+    id          Int       @id @default(autoincrement())
+    module      Module    @relation(fields: [moduleId], references: [id])
+    exam_form   Exam_form @relation(fields: [exam_formId], references: [id])
+    date        DateTime  @db.Date()
+    starttime   DateTime  @db.Time()
+    endtime     DateTime  @db.Time()
+    room        Room[]
+    lastUpdate  DateTime  @updatedAt
+    examiners   User[]
+    moduleId    Int
+    exam_formId Int
+}
+
+//Prüfungsform
+model Exam_form {
+    id           Int    @id @default(autoincrement())
+    abbreviation String @unique
+    description  String @unique
+    Exam         Exam[]
+}
+
+//Benachrichtigung
+model Notification {
+    id            Int           @id @default(autoincrement())
+    event         Event         @relation(fields: [eventId], references: [id])
+    type_change   Type_change[]
+    reason        String
+    date_changed  DateTime
+    days_shown    Int
+    eventId       Int
+    type_changeId Int
+}
+
+//Änderungsart
+model Type_change {
+    id           Int            @id @default(autoincrement())
+    name         String         @unique
+    Notification Notification[]
+}
